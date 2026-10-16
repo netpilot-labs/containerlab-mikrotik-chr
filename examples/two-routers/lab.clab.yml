@@ -1,0 +1,28 @@
+# Two CHR routers on the official mikrotik/chr image, plus a Linux host behind r1.
+#   h1 (192.168.10.2) -- eth1 | r1 ether4 (192.168.10.1)
+#   r1 ether2 (10.0.0.1/30) -- r2 ether2 (10.0.0.2/30), r2 loopback 2.2.2.2
+name: chr-two-routers
+topology:
+  kinds:
+    mikrotik_ros:
+      image: mikrotik/chr:7.24.5
+      binds:
+        - chr-launch.sh:/chr-launch.sh:ro
+      entrypoint: /bin/sh /chr-launch.sh
+  nodes:
+    r1:
+      kind: mikrotik_ros
+      startup-config: r1.rsc
+    r2:
+      kind: mikrotik_ros
+      startup-config: r2.rsc
+    h1:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - ip addr add 192.168.10.2/24 dev eth1
+        - ip route add 10.0.0.0/30 via 192.168.10.1
+        - ip route add 2.2.2.2/32 via 192.168.10.1
+  links:
+    - endpoints: ["r1:eth1", "r2:eth1"]
+    - endpoints: ["r1:eth3", "h1:eth1"]
