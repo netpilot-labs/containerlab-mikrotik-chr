@@ -7,8 +7,15 @@ check "[$T] version" "ros $R1 admin admin '/system resource print' | grep -q 've
 check "[$T] ssh r1 identity" "ros $R1 admin admin '/system identity print' | grep -q 'name: r1'"
 check "[$T] ssh r2 (lab default route in main)" "ros $R2 admin admin '/system identity print' | grep -q 'name: r2'"
 check "[$T] REST :80" "curl -s -m 10 -u admin:admin http://\$(ip_of $R1)/rest/system/identity | grep -q '\"name\":\"r1\"'"
-for p in 21 23 8291 8728; do check "[$T] tcp $p forwarded" "nc -z -w 5 \$(ip_of $R1) $p"; done
-check "[$T] serial console telnet :5000" "(sleep 2; printf '\r'; sleep 3) | nc -w 6 \$(ip_of $R1) 5000 | grep -a -q -i -E 'login|MikroTik|r1'"
+for p in 21 23 8291 8728; do check "[$T] tcp $p answers on the mgmt IP" "nc -z -w 5 \$(ip_of $R1) $p"; done
+check "[$T] transparent mgmt: ether1 has the clab IPv4" "ros $R1 admin admin '/ip address print terse where interface=ether1' | grep -q \"address=\$(ip_of $R1)/\""
+check "[$T] transparent mgmt: ether1 has the clab IPv6" "ros $R1 admin admin '/ipv6 address print terse where interface=ether1' | grep -q \"address=\$(sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.GlobalIPv6Address}}{{end}}' $R1)/\""
+check "[$T] transparent mgmt: ssh over IPv6" "sshpass -p admin ssh $SSHO admin@\$(sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.GlobalIPv6Address}}{{end}}' $R1) '/system identity print' | grep -q 'name: r1'"
+check "[$T] transparent mgmt: container eth0 has no address" "! sudo docker exec $R1 ip addr show dev eth0 | grep -q inet"
+check "[$T] transparent mgmt: ether1 DHCP client disabled" "ros $R1 admin admin '/ip dhcp-client print terse where interface=ether1' | grep -q -E '^ *[0-9]+ +X'"
+check "[$T] no router advertisement can make RouterOS a default router (h1)" "! sudo docker exec $H1 ip -6 route show | grep -q 'default via fe80::5054'"
+check "[$T] ether1 ND entry ra-lifetime=none" "ros $R1 admin admin '/ipv6 nd print terse where interface=ether1' | grep -q 'ra-lifetime=none'"
+check "[$T] serial console via docker exec :5000" "sudo docker exec $R1 sh -c \"(sleep 2; printf '\\\\r'; sleep 3) | nc -w 6 127.0.0.1 5000\" | grep -a -q -i -E 'login|MikroTik|r1'"
 check "[$T] blank factory password rejected" "! curl -s -f -m 10 -u admin: http://\$(ip_of $R1)/rest/system/identity"
 check "[$T] ether2 alias -> 10.0.0.1/30" "ros $R1 admin admin '/ip address print terse' | grep -q '10.0.0.1/30.*ether2'"
 check "[$T] ether4 (gap) -> 192.168.10.1/24" "ros $R1 admin admin '/ip address print terse' | grep -q '192.168.10.1/24.*ether4'"
