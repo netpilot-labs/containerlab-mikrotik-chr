@@ -1,0 +1,15 @@
+name: f
+topology:
+  nodes:
+    r1:
+      kind: mikrotik_chr
+      image: mikrotik/chr:7.24.5
+      env: {MEM: "1024", CPUS: "2"}
+    h1:
+      kind: linux
+      image: alpine:3.20
+      stages:
+        create:
+          wait-for:
+            - node: r1
+              stage: healthy

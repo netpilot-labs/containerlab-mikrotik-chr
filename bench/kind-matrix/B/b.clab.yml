@@ -1,0 +1,13 @@
+name: b
+topology:
+  kinds:
+    mikrotik_chr: {image: "mikrotik/chr:7.24.5"}
+  nodes:
+    r3:
+      kind: mikrotik_chr
+      startup-config: r3.rsc
+      credentials: {username: netops, password: "p@ss w#rd/1"}
+    r4: {kind: mikrotik_chr, startup-config: r4-bad.rsc}
+    r5: {kind: mikrotik_chr, startup-config: r5-nossh.rsc}
+  links:
+    - endpoints: ["r3:ether2", "r4:ether2"]

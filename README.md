@@ -21,13 +21,18 @@ the entrypoint. It gives you what you expect from a containerlab node:
 - **Restarts that keep the router.** `containerlab restart --node` and an in-router `/system reboot` keep
   the interface names, MACs, config and links.
 
+- **amd64 and arm64, with or without KVM.** The image's own QEMU and firmware are used for each
+  architecture. Without `/dev/kvm` the router boots under TCG emulation, so it also runs where KVM is
+  not available.
+
 Background: containerlab [#3116](https://github.com/srl-labs/containerlab/issues/3116) and
-[#3464](https://github.com/srl-labs/containerlab/issues/3464).
+[#3464](https://github.com/srl-labs/containerlab/issues/3464). The same launcher is proposed as a native
+containerlab kind, `mikrotik_chr`, in a containerlab PR (see [#3464](https://github.com/srl-labs/containerlab/issues/3464)): with that kind a node needs only `kind` and
+`image`.
 
 ## Quick start
 
-Requirements: containerlab, Docker, and KVM on the host (`/dev/kvm`). Without KVM the router boots under
-TCG emulation, which works but is slow.
+Requirements: containerlab and Docker. KVM (`/dev/kvm`) makes the boot fast but is optional.
 
 ```bash
 git clone https://github.com/netpilot-labs/containerlab-mikrotik-chr
@@ -65,7 +70,11 @@ topology:
 With custom credentials the script creates that user in group `full` and disables the factory `admin`
 account, which has a blank password on a fresh CHR disk.
 
-`containerlab save` works as usual and writes each node's `/export` to its lab directory.
+`containerlab save` writes each node's `/export` to its lab directory. With the `mikrotik_ros` kind that
+export still contains the objects the launcher creates at every boot, and RouterOS stops an import at the
+first one, so remove these lines before using a saved file as a startup config: `add fib name=mgmt`
+under `/routing table`, the `routing-table=mgmt` route, the `table=mgmt` rule and the `interface=ether1`
+DHCP client. The `mikrotik_chr` kind (a containerlab PR (see [#3464](https://github.com/srl-labs/containerlab/issues/3464))) drops them for you.
 
 ## Log lines
 
@@ -73,20 +82,20 @@ account, which has a blank password on a fresh CHR disk.
 
 | Line | Meaning |
 |------|---------|
-| `chr-launch: RouterOS ready` | Credentials set, startup config imported, node ready to use |
+| `chr-launch: RouterOS ready` | Credentials set, startup config imported and SSH answering: the node is ready to use. The launcher also creates `/.chr-launch-ready` in the container, usable as a healthcheck |
 | `chr-launch: startup config import FAILED: Script Error: … (line N column M)` | RouterOS rejected that line. Lines before it were applied, the rest were not. No ready line follows |
 | `chr-launch: credential bootstrap FAILED: …` | The user or password step failed. No ready line follows |
 | `chr-launch: already bootstrapped (restart): skipping config` | A restarted node keeps its existing config |
 
 ## Options
 
-Set under the node's `env:`:
+Set under the node's `env:`. `MEM`, `CPUS` and `DISK` are the official image's own variables:
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `CHR_MEM` | 256 MiB + 8 MiB per data NIC | VM memory (MiB) |
-| `CHR_CPUS` | 1 | VM vCPUs |
-| `CHR_DISK` | 128M | Minimum disk size (the disk only grows) |
+| `MEM` | 256 MiB + 8 MiB per data NIC | VM memory (a QEMU `-m` value) |
+| `CPUS` | 1 | VM vCPUs |
+| `DISK` | 128M | Minimum disk size (the disk only grows) |
 | `CHR_INTF_WAIT` | 60 | Seconds to wait for containerlab's links before boot |
 | `CHR_BOOT_WAIT` | 300 | Seconds to wait for RouterOS to answer, also the startup config import limit |
 
@@ -100,7 +109,8 @@ Set under the node's `env:`:
    numbering follows the container's. A veth that appears later is bridged as it arrives.
 4. Waits for RouterOS REST on `127.0.0.1:80`, sets the credentials and the identity, moves the
    management default route into a `mgmt` routing table, then fetches and `/import`s the startup config.
-5. Prints the ready line and stays in the foreground with qemu.
+5. Waits for the SSH banner (unless the config disables SSH), prints the ready line and stays in the
+   foreground with qemu. The serial console is on TCP port 5000 (`telnet <node> 5000`).
 
 NIC MACs are derived from the container and persisted on first boot, so RouterOS sees the same
 interfaces after a restart.

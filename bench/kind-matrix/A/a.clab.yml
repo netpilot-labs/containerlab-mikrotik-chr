@@ -1,0 +1,18 @@
+name: a
+topology:
+  kinds:
+    mikrotik_chr:
+      image: mikrotik/chr:${CHR_TAG:=7.24.5}
+  nodes:
+    r1: {kind: mikrotik_chr, startup-config: r1.rsc}
+    r2: {kind: mikrotik_chr, startup-config: r2.rsc}
+    h1:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - ip addr add 192.168.10.2/24 dev eth1
+        - ip route add 10.0.0.0/30 via 192.168.10.1
+        - ip route add 2.2.2.2/32 via 192.168.10.1
+  links:
+    - endpoints: ["r1:ether2", "r2:ether2"]
+    - endpoints: ["r1:ether4", "h1:eth1"]

@@ -1,0 +1,11 @@
+name: c
+topology:
+  kinds:
+    mikrotik_chr: {image: "mikrotik/chr:7.24.5"}
+  nodes:
+    o1: {kind: mikrotik_chr, startup-config: o1.rsc}
+    o2: {kind: mikrotik_chr, startup-config: o2.rsc}
+    o3: {kind: mikrotik_chr, startup-config: o3.rsc}
+  links:
+    - endpoints: ["o1:eth1", "o2:eth1"]
+    - endpoints: ["o2:eth2", "o3:ether13"]

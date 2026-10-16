@@ -4,7 +4,8 @@
 #
 # The image is MikroTik's own Docker Hub distribution (Alpine + qemu +
 # /diskimage/chr-<ver>.img + /start.sh). This script is bind-mounted into the
-# node and set as its entrypoint (kind `mikrotik_ros`, see README). It replaces
+# node and set as its entrypoint (the containerlab `mikrotik_chr` kind does this
+# itself; with the `mikrotik_ros` kind, see README). It replaces
 # the image's /start.sh, which is not orchestration-ready (containerlab#3116):
 # it scans interfaces once before containerlab attaches the links, bridges the
 # management NIC so the container IP never reaches the router, and imports no
@@ -37,11 +38,17 @@
 # their config. The REST bootstrap is skipped on a restart, only the
 # idempotent management-table step re-runs.
 #
-# Args (containerlab's mikrotik_ros Cmd): --username U --password P
-#   --hostname H [--connection-mode M] [--trace]   (unknown flags are ignored)
-# Env (all optional, set under the node's `env:`):
-#   CHR_MEM (MiB, default 256 + 8 per data NIC), CHR_CPUS (default 1),
-#   CHR_DISK (default 128M), CHR_INTF_WAIT (s, 60), CHR_BOOT_WAIT (s, 300)
+# Architectures: the image's own qemu (qemu-system-x86_64 on amd64,
+#   qemu-system-aarch64 + edk2 on arm64), KVM when /dev/kvm exists, else TCG.
+# Args (the kind's Cmd): --hostname H [--username U --password P]
+#   (unknown flags are ignored); credentials default to the USERNAME/PASSWORD env
+# Env (all optional, set under the node's `env:`); MEM, CPUS and DISK are the
+#   official image's own variables:
+#   MEM (qemu -m value, default 256 + 8 MiB per data NIC), CPUS (default 1),
+#   DISK (default 128M), CHR_INTF_WAIT (s, 60), CHR_BOOT_WAIT (s, 300)
+# Serial console: telnet to port 5000 of the container.
+# Ready: /.chr-launch-ready exists once RouterOS is ready (the kind's default
+#   healthcheck); it is removed at every start.
 # Log lines (docker logs clab-<lab>-<node>), all prefixed "chr-launch:":
 #   "RouterOS ready"                   login + startup config done
 #   "startup config import FAILED: …"  the router rejected the .rsc (RouterOS's
@@ -49,12 +56,16 @@
 #   "credential bootstrap FAILED: …"   the user/password step failed
 #   "management route setup FAILED: …" the mgmt table step failed
 #
+# Copyright 2026 NetPilot Labs
+# Licensed under the BSD 3-Clause License.
 # SPDX-License-Identifier: BSD-3-Clause
 
 set -u
 
-USERNAME="admin"
-PASSWORD="admin"
+# Credentials come from the USERNAME/PASSWORD env the kind sets (no quoting
+# limits on the password); --username/--password still override them.
+USERNAME="${USERNAME:-admin}"
+PASSWORD="${PASSWORD-admin}"
 HOSTNAME_ARG=""
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -68,8 +79,8 @@ while [ $# -gt 0 ]; do
 done
 [ -n "$HOSTNAME_ARG" ] || HOSTNAME_ARG="$(hostname)"
 
-CPUS="${CHR_CPUS:-1}"
-DISK="${CHR_DISK:-128M}"
+CPUS="${CPUS:-1}"
+DISK="${DISK:-128M}"
 INTF_WAIT="${CHR_INTF_WAIT:-60}"
 BOOT_WAIT="${CHR_BOOT_WAIT:-300}"
 INTFS="${CLAB_INTFS:-0}"
@@ -77,12 +88,14 @@ STARTUP_CFG=/ftpboot/config.auto.rsc
 # Per-container state in the rw layer: survives every restart, gone with the
 # container (destroy, redeploy --cleanup).
 DONE_MARKER=/.chr-launch-bootstrapped
+READY_FILE=/.chr-launch-ready
 ID_FILE=/.chr-launch-node-id
 NICS_FILE=/.chr-launch-nics
 MGMT_TABLE=mgmt
 SYSNET=/sys/class/net
 
 log() { echo "chr-launch: $*"; }
+rm -f "$READY_FILE"
 
 # The slirp management subnet sits in the RFC 2544 benchmarking range, never in
 # an address a lab is likely to use on a link: a connected 10.0.0.0/30 on
@@ -126,9 +139,21 @@ done
 log "interfaces: $(count_intfs) of $INTFS expected after ${waited}s"
 
 # ---- qemu command line ----------------------------------------------------
-ACCEL="-accel tcg"
-[ -e /dev/kvm ] && ACCEL="-cpu host -accel kvm"
-[ -e /dev/kvm ] || log "no /dev/kvm: running under TCG emulation (slow boot)"
+# The image's own qemu and firmware, as its /start.sh selects them.
+case "$(uname -m)" in
+    aarch64|arm64)
+        QEMU="qemu-system-aarch64 -M virt -pflash /usr/share/qemu/edk2-aarch64-code.fd"
+        TCG_CPU="-cpu cortex-a57" ;;
+    *)
+        QEMU="qemu-system-x86_64"
+        TCG_CPU="" ;;
+esac
+if [ -e /dev/kvm ]; then
+    ACCEL="-cpu host -accel kvm"
+else
+    ACCEL="$TCG_CPU -accel tcg,split-wx=on"
+    log "no /dev/kvm: running under TCG emulation (slow boot)"
+fi
 
 MGMT="user,id=mgmt,net=$SLIRP_NET,host=$SLIRP_HOST,dhcpstart=$ROS_IP"
 for p in 21 22 23 80 443 8291 8728 8729; do
@@ -184,9 +209,7 @@ case "$INTFS" in *[!0-9]*|"") INTFS=0 ;; esac
 # RouterOS v7 memory ≈ 256 + 8·CPUS·(ifaces) MiB (MikroTik CHR system
 # requirements). Scale by the HIGHEST generated NIC, not CLAB_INTFS: a sparse
 # link on ether64 means CLAB_INTFS=1 yet 63 data NICs are created below.
-if [ -n "${CHR_MEM:-}" ]; then
-    MEM="$CHR_MEM"
-else
+if [ -z "${MEM:-}" ]; then
     MEM=$((256 + 8 * CPUS * max))
 fi
 
@@ -242,10 +265,10 @@ while [ "$i" -le "$max" ]; do
 done
 
 # shellcheck disable=SC2086
-qemu-system-x86_64 $ACCEL -display none -monitor none \
+$QEMU $ACCEL -display none -monitor none \
     -m "$MEM" -smp "cpus=$CPUS" \
     -drive "file=$IMG,format=raw" \
-    -serial tcp:127.0.0.1:5000,server,nowait \
+    -serial telnet:0.0.0.0:5000,server,nowait \
     $NET &
 QEMU_PID=$!
 trap 'kill "$QEMU_PID" 2>/dev/null; wait "$QEMU_PID" 2>/dev/null; exit 0' TERM INT
@@ -329,8 +352,32 @@ while [ -z "$AUTH" ]; do
 done
 log "RouterOS answered after ${waited}s"
 
+# Ready means a user can log in: RouterOS starts its SSH server well after REST
+# answers on a slow boot (about 40 s later under TCG on arm64), so when the
+# configuration keeps SSH enabled, the forwarded port must send its banner first.
+# A config that disables SSH is not waited for; a banner that never comes is
+# logged and the node is still declared ready (REST works).
+ssh_banner() { (sleep 3) | nc 127.0.0.1 22 2>/dev/null | head -c 7; }
+ready() {
+    case "$(rest "$AUTH" "ip/service?name=ssh")" in
+        *'"disabled":"false"'*)
+            _w=0
+            until [ "$(ssh_banner)" = "SSH-2.0" ]; do
+                if [ "$_w" -ge "$BOOT_WAIT" ]; then
+                    log "SSH did not answer within ${BOOT_WAIT}s (REST works)"
+                    break
+                fi
+                sleep 2
+                _w=$((_w + 5))
+            done
+            ;;
+    esac
+    touch "$READY_FILE" 2>/dev/null || true
+    log "RouterOS ready"
+}
+
 # A failed step WITHHOLDS the ready marker (qemu keeps running, so the node can
-# still be inspected over the console on 127.0.0.1:5000 inside the container).
+# still be inspected over the serial console, telnet port 5000).
 bootstrap_fail() {
     log "credential bootstrap FAILED: $1"
     wait "$QEMU_PID"
@@ -398,7 +445,7 @@ mgmt_route_setup() {
 if [ -f "$DONE_MARKER" ]; then
     log "already bootstrapped (restart): skipping config"
     mgmt_route_setup
-    log "RouterOS ready"
+    ready
     wait "$QEMU_PID"
     exit 0
 fi
@@ -480,5 +527,5 @@ if [ -s "$STARTUP_CFG" ]; then
 fi
 
 touch "$DONE_MARKER" 2>/dev/null || true
-log "RouterOS ready"
+ready
 wait "$QEMU_PID"
