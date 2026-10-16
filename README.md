@@ -27,7 +27,7 @@ the entrypoint. It gives you what you expect from a containerlab node:
 
 Background: containerlab [#3116](https://github.com/srl-labs/containerlab/issues/3116) and
 [#3464](https://github.com/srl-labs/containerlab/issues/3464). The same launcher is proposed as a native
-containerlab kind, `mikrotik_chr`, in a containerlab PR (see [#3464](https://github.com/srl-labs/containerlab/issues/3464)): with that kind a node needs only `kind` and
+containerlab kind, `mikrotik_chr`, in [containerlab#3498](https://github.com/srl-labs/containerlab/pull/3498): with that kind a node needs only `kind` and
 `image`.
 
 ## Quick start
@@ -74,7 +74,7 @@ account, which has a blank password on a fresh CHR disk.
 export still contains the objects the launcher creates at every boot, and RouterOS stops an import at the
 first one, so remove these lines before using a saved file as a startup config: `add fib name=mgmt`
 under `/routing table`, the `routing-table=mgmt` route, the `table=mgmt` rule and the `interface=ether1`
-DHCP client. The `mikrotik_chr` kind (a containerlab PR (see [#3464](https://github.com/srl-labs/containerlab/issues/3464))) drops them for you.
+DHCP client. The `mikrotik_chr` kind ([containerlab#3498](https://github.com/srl-labs/containerlab/pull/3498)) drops them for you.
 
 ## Log lines
 
