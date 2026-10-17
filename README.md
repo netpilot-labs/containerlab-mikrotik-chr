@@ -92,7 +92,7 @@ Set under the node's `env:`. `MEM`, `CPUS` and `DISK` are the official image's o
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `MEM` | 256 MiB + 8 MiB per data NIC | VM memory (a QEMU `-m` value) |
+| `MEM` | 256 MiB + 8 MiB per data NIC and vCPU | VM memory (a QEMU `-m` value) |
 | `CPUS` | 1 | VM vCPUs |
 | `DISK` | 128M | Minimum disk size (the disk only grows) |
 | `CHR_INTF_WAIT` | 60 | Seconds to wait for containerlab's links before boot |
