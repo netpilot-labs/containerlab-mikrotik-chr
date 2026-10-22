@@ -11,6 +11,7 @@ prints one `PASS` or `FAIL` line.
 | `D.sh` | `containerlab restart --node` (management left in place), an in-router reboot, `docker restart`, a restart with a new management IP (re-applied to `ether1`) |
 | `E.sh` | `containerlab save`, then a fresh deployment from the saved files |
 | `F.sh` | A `wait-for: healthy` stage dependency, `MEM` and `CPUS` |
+| `G.sh` | `containerlab save` on a `mikrotik_ros` node (standalone mode, `pub-example/`: this repo's example lab and launcher) through the shared SSH export |
 
 ## Running it
 

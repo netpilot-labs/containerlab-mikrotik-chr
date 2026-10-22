@@ -8,7 +8,7 @@ check "custom creds: factory admin disabled" "[ \"\$(ros $R3 netops '$PW' ':put 
 check "custom creds: blank admin rejected" "! curl -s -f -m 10 -u admin: http://\$(ip_of $R3)/rest/system/identity"
 check "rejected config: RouterOS reason with line" "sudo docker logs $R4 2>&1 | grep 'import FAILED' | grep -q 'line 3'"
 check "rejected config: never healthy" "[ \"\$(health $R4)\" != healthy ] && ! sudo docker logs $R4 2>&1 | grep -q 'RouterOS ready'"
-check "rejected config: mgmt still works" "ros $R4 admin admin '/system identity print' | grep -q 'name: r4'"
+check "rejected config: mgmt still works (SSH within 60s; a rejected node never runs the ready wait)" "for i in \$(seq 1 6); do ros $R4 admin admin '/system identity print' | grep -q 'name: r4' && exit 0; sleep 10; done; exit 1"
 check "rejected config: lines before applied" "ros $R4 admin admin '/ip address print terse' | grep -q '172.16.0.2/30'"
 check "rejected config: lines after not applied" "! ros $R4 admin admin '/ip address print terse' | grep -q 4.4.4.4"
 wait_healthy clab-b-r5 300

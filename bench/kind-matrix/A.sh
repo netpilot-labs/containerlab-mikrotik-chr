@@ -26,4 +26,5 @@ check "[$T] LLDP/MNDP neighbor" "ros $R1 admin admin '/ip neighbor print detail'
 check "[$T] tap MTU = veth MTU" "[ \"\$(sudo docker exec $R1 cat /sys/class/net/eth1/mtu)\" = \"\$(sudo docker exec $R1 cat /sys/class/net/tap1/mtu)\" ]"
 check "[$T] r2: mgmt table default + lab default in main" "ros $R2 admin admin '/ip route print terse where dst-address=0.0.0.0/0' | grep -q 'routing-table=mgmt' && ros $R2 admin admin '/ip route print terse where dst-address=0.0.0.0/0' | grep -q 'gateway=10.0.0.1'"
 check "[$T] docker health = healthy" "[ \"\$(health $R1)\" = healthy ] && [ \"\$(health $R2)\" = healthy ]"
+check "[$T] healthcheck start period follows the launcher deadlines (1050s)" "[ \"\$(sudo docker inspect -f '{{.Config.Healthcheck.StartPeriod}}' $R1)\" = 17m30s ]"
 check "[$T] launcher in labdir matches the bind" "[ \"\$(sudo sha256sum < ~/m/A/clab-a/r1/chr-launch.sh)\" = \"\$(sudo docker exec $R1 cat /chr-launch.sh | sha256sum)\" ]"
