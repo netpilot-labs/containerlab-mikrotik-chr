@@ -1,0 +1,10 @@
+name: vr2
+topology:
+  kinds:
+    mikrotik_ros: {image: "vrnetlab/mikrotik_routeros:7.24.5"}
+  nodes:
+    r1: {kind: mikrotik_ros, startup-config: r1.rsc}
+    r2:
+      kind: mikrotik_ros
+      startup-config: r2.rsc
+      credentials: {username: admin, password: "pass word#1"}
