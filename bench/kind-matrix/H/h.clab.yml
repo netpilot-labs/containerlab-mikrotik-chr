@@ -1,0 +1,10 @@
+name: hp
+topology:
+  kinds:
+    mikrotik_chr: {image: "mikrotik/chr:7.24.5"}
+  nodes:
+    r1: {kind: mikrotik_chr, startup-config: r1.rsc}
+    r2: {kind: mikrotik_chr, startup-config: r2.rsc}
+  links:
+    - endpoints: ["r1:ether2", "r2:ether2"]
+    - endpoints: ["r1:ether33", "r2:ether33"]

@@ -1,0 +1,10 @@
+name: imax
+topology:
+  nodes:
+    r1: {kind: mikrotik_chr, image: "mikrotik/chr:7.24.5", startup-config: r1.rsc}
+    h1:
+      kind: linux
+      image: alpine:3.20
+      exec: ["ip addr add 10.56.0.2/30 dev eth1"]
+  links:
+    - endpoints: ["r1:ether256", "h1:eth1"]

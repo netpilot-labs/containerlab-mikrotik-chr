@@ -22,3 +22,15 @@ On a Linux host with Docker, `sshpass`, `nc` and `curl`, with a containerlab bin
 bash ~/m/run.sh         # everything, plus RouterOS 7.23.8 and 7.25rc2
 bash ~/m/run-small.sh   # A, D, B, E
 ```
+
+## More than 29 interfaces (containerlab PR #3521)
+
+Run against the head of srl-labs/containerlab#3521 (`c46227a6`), with `run-pr.sh` running `H.sh`, `I.sh` and then the
+full matrix above.
+
+| Script | What it covers |
+|--------|----------------|
+| `H.sh` | `ether33` behind the second PCI bridge: interface count, MAC scheme, traffic over `ether2` and `ether33`, transparent management, `containerlab restart --node` keeping names, MACs and traffic |
+| `I.sh` | The amd64 limit: `ether256` deploys and passes traffic, `ether257` is refused with no container left behind |
+| `J.sh` | One node at a time with its highest link on `ether64`, `ether128`, `ether192`, `ether230` and `ether250`: health, RouterOS interface count, traffic on the highest interface |
+| `K.sh` | Which `etherN` interfaces RouterOS is missing at `ether64` and `ether128`, and `ether192` with a 15 minute boot budget |
