@@ -34,3 +34,13 @@ full matrix above.
 | `I.sh` | The amd64 limit: `ether256` deploys and passes traffic, `ether257` is refused with no container left behind |
 | `J.sh` | One node at a time with its highest link on `ether64`, `ether128`, `ether192`, `ether230` and `ether250`: health, RouterOS interface count, traffic on the highest interface |
 | `K.sh` | Which `etherN` interfaces RouterOS is missing at `ether64` and `ether128`, and `ether192` with a 15 minute boot budget |
+
+## Neighbor discovery on management (containerlab PR #3546)
+
+Run against the head of srl-labs/containerlab#3546 (`0f3f9b8d`) with `run-3546.sh`, a containerlab binary built from
+the PR at `~/clab` and one built from `main` at `~/clab-main`.
+
+| Script | What it covers |
+|--------|----------------|
+| `N.sh` | `N.sh main` is the control (r1 lists r2 on `ether1` through management). `N.sh` with the PR: nothing discovered on `ether1`, r2 still seen on `ether2`, the `clab-discovery` policy and its lists created once, `containerlab restart --node`, save then clean redeploy with the default policy and with `static` opted back in. `CHR_TAG` picks the RouterOS version |
+| `X.sh` | Save on a newer RouterOS (`NEW`, default 7.26beta4), deploy the saved files on an older one (`OLD`, default 7.23.8): `X.sh main` or `X.sh` for the PR |
