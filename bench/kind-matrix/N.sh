@@ -1,4 +1,5 @@
 # Neighbor discovery on management (containerlab PR #3546). N.sh [main] ; CHR_TAG picks the RouterOS version
+has_static() { sed -e ':a' -e '/\\$/{N;s/\\\n *//;ba' -e '}' "$1" | grep -Eq 'discover-interface-list=static( |$)'; } # joins RouterOS line wraps first
 . ~/m/lib.sh; T=${CHR_TAG:-7.24.5}; R1=clab-a-r1; R2=clab-a-r2
 [ "$1" = main ] && CLAB="sudo $HOME/clab-main"
 nb() { ros $1 admin admin "/ip neighbor print count-only where interface=$2" | tr -dc 0-9; }
@@ -33,7 +34,7 @@ for r in $R1 $R2; do ros $r admin admin '/ip neighbor discovery-settings set dis
 check "[$T] opt-in (static on both): r2 now seen on ether1" "[ \$(nb $R1 ether1) -ge 1 ]"
 $CLAB save -t a-saved.clab.yml > /tmp/n-save2.txt 2>&1; rc=$?
 for n in r1 r2; do sudo cp clab-a/$n/ftpboot/config.auto.rsc $n-saved2.rsc; done; sudo chown $USER *-saved2.rsc
-check "[$T] save (opt-in) rc=0, file has static" "[ $rc = 0 ] && tr -d '\n' < r1-saved2.rsc | grep -q -E 'discover-interface-list=[^a-z]*static( |$)'"
+check "[$T] save (opt-in) rc=0, file has static" "[ $rc = 0 ] && has_static r1-saved2.rsc"
 sed -e 's/r1.rsc/r1-saved2.rsc/; s/r2.rsc/r2-saved2.rsc/' a-$T.clab.yml > a-saved2.clab.yml
 $CLAB destroy -t a-saved.clab.yml --cleanup >/dev/null 2>&1; $CLAB deploy -t a-saved2.clab.yml > /tmp/n-redeploy2.txt 2>&1; up
 check "[$T] redeploy (opt-in): import ok, static kept on both, lists once, r2 seen on ether1" "! sudo docker logs $R1 2>&1 | grep -q FAILED && [ \$(pol $R1) = static ] && [ \$(pol $R2) = static ] && [ \$(nl $R1 clab-discovery) = 1 ] && [ \$(nb $R1 ether1) -ge 1 ]"

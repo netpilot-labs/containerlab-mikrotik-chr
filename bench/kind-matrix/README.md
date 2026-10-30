@@ -44,3 +44,21 @@ the PR at `~/clab` and one built from `main` at `~/clab-main`.
 |--------|----------------|
 | `N.sh` | `N.sh main` is the control (r1 lists r2 on `ether1` through management). `N.sh` with the PR: nothing discovered on `ether1`, r2 still seen on `ether2`, the `clab-discovery` policy and its lists created once, `containerlab restart --node`, save then clean redeploy with the default policy and with `static` opted back in. `CHR_TAG` picks the RouterOS version |
 | `X.sh` | Save on a newer RouterOS (`NEW`, default 7.26beta4), deploy the saved files on an older one (`OLD`, default 7.23.8): `X.sh main` or `X.sh` for the PR |
+
+## Keymat placeholder (containerlab PR #3545)
+
+Run against the head of srl-labs/containerlab#3545 (`8c69562d`) with `run-3545.sh`.
+
+| Script | What it covers |
+|--------|----------------|
+| `Y.sh` | `Y.sh main` is the control, `Y.sh` runs the PR: repeated exports, `containerlab save`, then an import on a fresh router. `CHR_TAG` picks the RouterOS version |
+| `Y2.sh` | When the placeholder appears on `main` with no keymat command: six exports from the moment the node is healthy, then one save right at healthy |
+
+## Management VRF (containerlab PR #3547)
+
+Run against the head of srl-labs/containerlab#3547 (`77d24e9d`) with `run-3547.sh`. `run-3547-combined.sh` runs a merge of #3545, #3546 and #3547. `run-3547-fix.sh` runs the same merge with the narrower export command proposed on the PR. Each needs that binary at `~/clab`, and `V.sh main` and `W.sh` also need `~/clab-main`.
+
+| Script | What it covers |
+|--------|----------------|
+| `V.sh` | `ether1` and the services in VRF `mgmt`, v4 and v6 default routes, SSH over IPv6 next to a lab default route, REST from an off-subnet client, SNMP v2c, data plane, service overrides through `containerlab restart --node` and save then redeploy, a user VRF on `ether3`, one SNMP community after redeploy. `V.sh main` prints the control lines. `CHR_TAG` picks the RouterOS version |
+| `W.sh` | A node deployed by `main`, then restarted by the PR binary |
