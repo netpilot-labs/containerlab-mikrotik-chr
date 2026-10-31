@@ -65,11 +65,13 @@ Run against the head of srl-labs/containerlab#3547 (`77d24e9d`) with `run-3547.s
 
 ## Reruns on the fixed heads (containerlab PRs #3545, #3546, #3547)
 
-Run against `25f012a8`, `20aff103` and `6f21c797`, each on its own and as a merge of all three. `r-3545.sh`, `r-3546.sh`, `r-3547.sh` and `r-combo.sh` each run one build, with its binary at `~/clab` and its source archive at `~/full.tgz`.
+Run against `25f012a8`, `20aff103` and `6f21c797`, each on its own and as a merge of all three. Rerun on `7ef6c87ef` (#3545) and `9380cce5e` (#3546), each on its own and merged on main after #3547 went in. `r-3545.sh`, `r-3546.sh`, `r-3547.sh` and `r-combo.sh` each run one build, with its binary at `~/clab` and its source archive at `~/full.tgz`.
 
 | Script | What it covers |
 |--------|----------------|
 | `X.sh` | `SAVES=2` saves twice before the deploy on the older version |
 | `Z.sh` | Merged build: service VRFs set to `main` and to a custom VRF, a disabled service, SNMP in `main`, one custom community, discovery on `static` and on a custom list, through two saves, a deploy on `OLD`, and another save and redeploy there |
-| `rb.sh` | The PR's own Robot suite on 7.24.5, 7.25 to 7.23.8 and 7.26beta4 to 7.23.8, then its Go unit tests. The Go step runs as root here, where `TestDefaultNodeRestoreEndpointsOwnership` cannot pass, so run it as a normal user |
+| `rb.sh` | The PR's own Robot suite on 7.24.5, 7.25 to 7.23.8 and 7.26beta4 to 7.23.8, then its Go unit tests as a normal user, since `TestDefaultNodeRestoreEndpointsOwnership` cannot pass as root |
 | `m-all.sh` | The matrix A to F, sourced by the run scripts |
+
+Three checks in `A.sh` and `D.sh` predate the native VRF in #3547 and fail on all of those builds: tcp 21, the 1050s healthcheck start period and the routing-rule count after `restart --node`.

@@ -6,4 +6,4 @@ for pair in "7.24.5:" "7.25:7.23.8" "7.26beta4:7.23.8"; do s=${pair%%:*}; o=${pa
   sudo docker pull -q mikrotik/chr:$s >/dev/null; [ -n "$o" ] && sudo docker pull -q mikrotik/chr:$o >/dev/null
   echo "######## ROBOT $s -> ${o:-same}"; CLAB_BIN=/usr/bin/containerlab CHR_IMAGE=mikrotik/chr:$s CHR_REDEPLOY_IMAGE=${o:+mikrotik/chr:$o} bash ./tests/rf-run.sh docker ./tests/16-mikrotik-chr/01-chr.robot 2>&1 | grep -E '\| (PASS|FAIL) \||tests?, ' 
 done
-GV=$(awk '/^go /{print $2}' go.mod); sudo docker run --rm -v $HOME/src:/s -w /s golang:$GV go test ./nodes/mikrotik_chr/ ./nodes/ 2>&1 | tail -4 | sed 's/^/GO /'
+GV=$(awk '/^go /{print $2}' go.mod); sudo docker run --rm -u $(id -u):$(id -g) -e HOME=/tmp -e GOCACHE=/tmp/gc -e GOMODCACHE=/tmp/gm -v $HOME/src:/s -w /s golang:$GV go test ./nodes/mikrotik_chr/ ./nodes/ 2>&1 | grep -E '^(ok|FAIL|--- FAIL)' | sed 's/^/GO /'
