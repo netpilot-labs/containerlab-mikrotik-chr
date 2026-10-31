@@ -62,3 +62,14 @@ Run against the head of srl-labs/containerlab#3547 (`77d24e9d`) with `run-3547.s
 |--------|----------------|
 | `V.sh` | `ether1` and the services in VRF `mgmt`, v4 and v6 default routes, SSH over IPv6 next to a lab default route, REST from an off-subnet client, SNMP v2c, data plane, service overrides through `containerlab restart --node` and save then redeploy, a user VRF on `ether3`, one SNMP community after redeploy. `V.sh main` prints the control lines. `CHR_TAG` picks the RouterOS version |
 | `W.sh` | A node deployed by `main`, then restarted by the PR binary |
+
+## Reruns on the fixed heads (containerlab PRs #3545, #3546, #3547)
+
+Run against `25f012a8`, `20aff103` and `6f21c797`, each on its own and as a merge of all three. `r-3545.sh`, `r-3546.sh`, `r-3547.sh` and `r-combo.sh` each run one build, with its binary at `~/clab` and its source archive at `~/full.tgz`.
+
+| Script | What it covers |
+|--------|----------------|
+| `X.sh` | `SAVES=2` saves twice before the deploy on the older version |
+| `Z.sh` | Merged build: service VRFs set to `main` and to a custom VRF, a disabled service, SNMP in `main`, one custom community, discovery on `static` and on a custom list, through two saves, a deploy on `OLD`, and another save and redeploy there |
+| `rb.sh` | The PR's own Robot suite on 7.24.5, 7.25 to 7.23.8 and 7.26beta4 to 7.23.8, then its Go unit tests. The Go step runs as root here, where `TestDefaultNodeRestoreEndpointsOwnership` cannot pass, so run it as a normal user |
+| `m-all.sh` | The matrix A to F, sourced by the run scripts |
