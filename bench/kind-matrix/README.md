@@ -75,3 +75,13 @@ Run against `25f012a8`, `20aff103` and `6f21c797`, each on its own and as a merg
 | `m-all.sh` | The matrix A to F, sourced by the run scripts |
 
 Three checks in `A.sh` and `D.sh` predate the native VRF in #3547 and fail on all of those builds: tcp 21, the 1050s healthcheck start period and the routing-rule count after `restart --node`.
+
+## Reboots from inside RouterOS (containerlab PR #3568)
+
+Run against the heads of srl-labs/containerlab#3568 (`5e58d57c`, then `94a2fcbf`) with `run-3568.sh rest` on one host
+and `run-3568.sh ssh` on another, the PR binary at `~/clab`. `LABEL` names the build in each `RES` line.
+
+| Script | What it covers |
+|--------|----------------|
+| `R.sh` | Two routers linked on their highest `etherN`, each deploy rebooted from inside RouterOS (REST `/system/reboot` or `/system reboot` over SSH with `y` on stdin). After each reboot, at +30 s and +150 s: RouterOS interface count, the missing `etherN`, a ping out of `etherN`, container health, and how many times the launcher logged its reboot check, a re-plug and a failed check, so a line shows the new path ran, not only the end state |
+| `run-3568.sh` | `R.sh` at 26, 29 and 33 interfaces, 2 deploys with 3 reboots each, then `ALLDONE` |
